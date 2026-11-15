@@ -1,0 +1,186 @@
+### Koleksi request Mount Tracker API
+### Pakai ekstensi VS Code "REST Client" (humao.rest-client): klik "Send Request" di atas tiap request.
+### Tes otomatis semua endpoint: php tests/api_test.php http://127.0.0.1:8000
+
+@base = http://127.0.0.1:8000
+# Isi setelah login (ambil data.token dari response login)
+@token = ISI_TOKEN_DI_SINI
+
+### Status server
+GET {{base}}/
+
+### ---------------------------------------------------------------- 1. Auth
+POST {{base}}/register
+Content-Type: application/json
+
+{ "username": "pendaki1", "email": "pendaki1@contoh.test", "password": "rahasia123", "confirmPassword": "rahasia123" }
+
+### Login (email atau username)
+POST {{base}}/login
+Content-Type: application/json
+
+{ "login": "demo", "password": "demo1234" }
+
+### Lupa password -> kode 6 digit dikirim ke email (lihat Mailpit http://localhost:8025 atau Gmail)
+POST {{base}}/forgot
+Content-Type: application/json
+
+{ "username": "demo", "email": "demo@mounttracker.local" }
+
+### Reset password dengan kode dari email
+POST {{base}}/reset
+Content-Type: application/json
+
+{ "email": "demo@mounttracker.local", "code": "123456", "newPassword": "demo1234", "confirmPassword": "demo1234" }
+
+### Login Google (idToken dari aplikasi)
+POST {{base}}/auth/google
+Content-Type: application/json
+
+{ "idToken": "TOKEN_DARI_GOOGLE" }
+
+### Profil
+GET {{base}}/me
+Authorization: Bearer {{token}}
+
+###
+PUT {{base}}/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "displayName": "Pendaki Demo" }
+
+### ---------------------------------------------------------------- 2-3. Gunung, jalur, pos
+GET {{base}}/mountains
+
+###
+GET {{base}}/mountains?q=rin
+
+###
+GET {{base}}/mountains?difficulty=extreme
+
+###
+GET {{base}}/mountains/1
+
+###
+GET {{base}}/mountains/1/trails
+
+###
+GET {{base}}/trails/1/checkpoints
+
+### ---------------------------------------------------------------- 7. Kontak darurat
+GET {{base}}/contacts
+Authorization: Bearer {{token}}
+
+###
+POST {{base}}/contacts
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Ibu", "phone": "081234567890", "relationship": "Keluarga" }
+
+###
+PUT {{base}}/contacts/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "relationship": "Keluarga inti" }
+
+###
+PUT {{base}}/contacts/1/primary
+Authorization: Bearer {{token}}
+
+###
+DELETE {{base}}/contacts/1
+Authorization: Bearer {{token}}
+
+### ---------------------------------------------------------------- 4. Pendakian
+POST {{base}}/trips
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "mountainId": 1, "trailId": 1, "groupSize": 3, "plannedDays": 2, "startDate": "2026-12-24", "notes": "Bawa jas hujan" }
+
+### Pendakian aktif (atau rencana terdekat) + status pos + estimasi
+GET {{base}}/trips/active
+Authorization: Bearer {{token}}
+
+###
+POST {{base}}/trips/1/start
+Authorization: Bearer {{token}}
+
+###
+POST {{base}}/trips/1/locations
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "locations": [ { "latitude": -8.3725, "longitude": 116.529, "altitudeM": 1160, "accuracyM": 8 }, { "source": "unavailable" } ] }
+
+### ---------------------------------------------------------------- 5. Check-in pos
+POST {{base}}/trips/1/checkins
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "checkpointId": 1 }
+
+###
+GET {{base}}/trips/1/checkpoints
+Authorization: Bearer {{token}}
+
+###
+POST {{base}}/trips/1/finish
+Authorization: Bearer {{token}}
+
+###
+POST {{base}}/trips/1/cancel
+Authorization: Bearer {{token}}
+
+### Riwayat
+GET {{base}}/trips?status=finished&include=locations
+Authorization: Bearer {{token}}
+
+###
+GET {{base}}/trips/1
+Authorization: Bearer {{token}}
+
+### ---------------------------------------------------------------- 6. Health
+POST {{base}}/health
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "bpm": 118, "altitudeM": 2400, "spo2": 88, "temperatureC": 36.6, "steps": 9500, "calories": 640, "isSimulated": true }
+
+###
+GET {{base}}/health?limit=20
+Authorization: Bearer {{token}}
+
+### ---------------------------------------------------------------- 7. SOS
+POST {{base}}/sos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "latitude": -8.39, "longitude": 116.5, "time": "2026-11-15T10:00:00+07:00", "type": "injury", "message": "Kaki terkilir" }
+
+###
+GET {{base}}/sos
+Authorization: Bearer {{token}}
+
+###
+POST {{base}}/sos/1/resolve
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "status": "resolved" }
+
+### ---------------------------------------------------------------- 8. Cuaca per jam
+GET {{base}}/weather?lat=-8.41&lng=116.46&hours=12
+
+###
+GET {{base}}/weather?mountainId=1
+
+### ---------------------------------------------------------------- Laporan kendala
+POST {{base}}/issues
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "category": "Peta", "description": "Peta lambat dimuat" }

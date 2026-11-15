@@ -1,3 +1,4 @@
+import './src/webAlert';
 import React, { useEffect, useRef } from 'react';
 import { View, ActivityIndicator, StatusBar, Alert } from 'react-native';
 import { NavigationContainer, DarkTheme, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';
