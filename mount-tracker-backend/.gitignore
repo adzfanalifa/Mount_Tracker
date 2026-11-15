@@ -2,3 +2,4 @@
 .env
 /storage/cache/*
 !/storage/cache/.gitkeep
+/database/backup/
