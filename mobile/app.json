@@ -2,13 +2,30 @@
   "expo": {
     "name": "Mount Tracker",
     "slug": "mount-tracker",
+    "scheme": "mounttracker",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.mounttracker.app",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "ACTIVITY_RECOGNITION"]
+    },
+    "ios": {
+      "bundleIdentifier": "com.mounttracker.app"
+    },
     "plugins": [
       "expo-font",
       "expo-asset",
-      "expo-image"
+      "expo-image",
+      "expo-web-browser",
+      [
+        "expo-location",
+        { "locationWhenInUsePermission": "Mount Tracker memakai lokasi untuk mencatat jejak pendakian dan SOS." }
+      ],
+      [
+        "expo-sensors",
+        { "motionPermission": "Mount Tracker menghitung langkah selama pendakian." }
+      ]
     ]
   }
 }

@@ -87,19 +87,40 @@ export class User {
     this._contacts.forEach((c) => { c.isPrimary = c.id === id; });
   }
   primaryContact() { return this._contacts.find((c) => c.isPrimary) || null; }
+  setContacts(list) { this._contacts = [...list]; } // daftar dari backend (sudah tervalidasi server)
   hasEmergencyContact() { return this._contacts.length > 0; }
 }
 
 // ----------------------------------------------------------------- Mountain
 export class Mountain {
-  constructor({ id, name, elevationMdpl, difficulty = 'easy', trails = [] }) {
+  constructor({ id, name, elevationMdpl, difficulty = 'easy', trails = [], trailDetails = [], latitude = null, longitude = null, province = null, description = null, imageUrl = null }) {
     this.id = id;
     this.name = name;
     this.elevationMdpl = elevationMdpl;
     this.difficulty = difficulty; // easy | medium | extreme
     this.trails = trails;
+    this.trailDetails = trailDetails; // [{id, name, basecampLat, basecampLng, checkpointCount, ...}] dari backend
+    this.latitude = latitude;
+    this.longitude = longitude;
+    this.province = province;
+    this.description = description;
+    this.imageUrl = imageUrl;
   }
   isHardLevel() { return this.difficulty === 'extreme'; }
+  hasCoords() { return Number.isFinite(this.latitude) && Number.isFinite(this.longitude); }
+  trailByName(name) { return this.trailDetails.find((t) => t.name === name) || null; }
+  // Jalur default untuk peta: yang punya data pos, kalau tidak ada ya jalur pertama.
+  defaultTrail() { return this.trailDetails.find((t) => t.checkpointCount > 0) || this.trailDetails[0] || null; }
+}
+
+// Ubah data JSON backend menjadi objek model (dipakai store).
+const toDate = (s) => (s ? new Date(s) : null);
+export function locationFromApi(l) {
+  if (!l || l.source === 'unavailable' || l.latitude == null) return new Location({ source: 'unavailable', recordedAt: toDate(l && l.recordedAt) || new Date() });
+  return new Location({ latitude: Number(l.latitude), longitude: Number(l.longitude), altitudeM: l.altitudeM, accuracyM: l.accuracyM, source: l.source || 'gps', recordedAt: toDate(l.recordedAt) || new Date() });
+}
+export function contactFromApi(c) {
+  return new EmergencyContact({ id: String(c.id), name: c.name, phone: c.phone, relationship: c.relationship || '', isPrimary: !!c.isPrimary });
 }
 
 // -------------------------------------------------------------- HikingTrip
@@ -155,7 +176,7 @@ export class HikingTrip {
   }
   lastKnownLocation() {
     for (let i = this._locations.length - 1; i >= 0; i--) if (this._locations[i].isAvailable()) return this._locations[i];
-    return null;
+    return this._lastKnown || null;
   }
   unavailableCount() { return this._locations.filter((l) => !l.isAvailable()).length; }
   isOverdue(now = new Date()) { return this._status === TRIP_STATUS.ACTIVE && now > this.expectedReturnAt; }
@@ -192,6 +213,29 @@ export class HikingTrip {
     const a = this.trackPoints().map((l) => l.altitudeM).filter((x) => x != null);
     return a.length ? Math.max(...a) : null;
   }
+
+  // Membuat HikingTrip dari JSON backend tanpa validasi tanggal (data riwayat boleh di masa lalu).
+  static fromApi(j, mountain) {
+    const t = Object.create(HikingTrip.prototype);
+    t.id = String(j.id);
+    t.mountain = mountain || new Mountain({ id: String(j.mountainId), name: j.mountainName || (j.mountain && j.mountain.name) || '-', elevationMdpl: (j.mountain && j.mountain.elevationMdpl) || 0, difficulty: (j.mountain && j.mountain.difficulty) || 'easy', trails: [j.trailName], latitude: j.mountain && j.mountain.latitude, longitude: j.mountain && j.mountain.longitude });
+    t.trailId = j.trailId == null ? null : String(j.trailId);
+    t.trailName = j.trailName;
+    t.groupSize = j.groupSize;
+    t.plannedDays = j.plannedDays;
+    t.startDate = toDate(j.startDate);
+    t.expectedReturnAt = toDate(j.expectedReturnAt);
+    t.contact = null;
+    t.contactId = j.contactId == null ? null : String(j.contactId);
+    t.notes = j.notes || '';
+    t.startedAt = toDate(j.startedAt);
+    t.endedAt = toDate(j.endedAt);
+    t._status = j.status;
+    t._locations = Array.isArray(j.locations) ? j.locations.map(locationFromApi) : [];
+    t._lastKnown = j.lastKnownLocation ? locationFromApi(j.lastKnownLocation) : null;
+    t.progress = j.checkpoints || null; // {checkpoints:[...], next, paceFactor}
+    return t;
+  }
 }
 
 // ----------------------------------------------------------- EmergencyEvent
@@ -207,6 +251,12 @@ export class EmergencyEvent {
     this._status = 'active';
   }
   get status() { return this._status; }
+  static fromApi(j) {
+    const e = new EmergencyEvent({ id: String(j.id), type: j.type, message: j.message || '', location: locationFromApi(j.location), tripId: j.tripId == null ? null : String(j.tripId), now: toDate(j.triggeredAt) || new Date() });
+    e._status = j.status;
+    e.resolvedAt = toDate(j.resolvedAt);
+    return e;
+  }
   resolve(status = 'resolved', now = new Date()) {
     if (this._status !== 'active') throw new Error('Kondisi darurat ini sudah ditutup');
     if (status !== 'resolved' && status !== 'cancelled') throw new Error('Status penutup tidak valid');

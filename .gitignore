@@ -4,6 +4,7 @@ dist/
 
 .env
 .env.*
+!.env.example
 
 *.log
 
@@ -11,3 +12,4 @@ dist/
 
 mobile/node_modules/
 mobile/.expo/
+mobile/.expo-export-check/

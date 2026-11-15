@@ -39,7 +39,7 @@ function buildTrack(route, start, points, seed) {
 }
 
 export function makeSampleTrips(mountains, now = new Date()) {
-  const byId = Object.fromEntries(mountains.map((m) => [m.id, m]));
+  const byId = Object.fromEntries(mountains.map((m) => [String(m.name).toLowerCase(), m])); // dicari per nama gunung
   const plan = [
     ['rinjani', 0, 4, 2, 70, 11, 'finished'],
     ['gede', 1, 18, 1, 40, 23, 'finished'],

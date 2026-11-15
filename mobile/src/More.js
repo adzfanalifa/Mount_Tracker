@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { C } from './theme';
+import { useTheme } from './theme';
 import { useApp } from './store';
 import { DIFFICULTY } from './data';
 import { runSelfTests, summarize, TEST_GROUPS } from './selftest';
 import { diagnoseLocation, checkNetwork } from './location';
-import { Screen, Card, Btn, Field, fmtDateTime, x } from './Extra';
+import { Screen, Card, Btn, Field, fmtDateTime, useX } from './Extra';
 
 // ------------------------------------------------------------- Panduan Pengguna
 // Bagian terakhir (adminOnly) hanya tampil untuk admin.
@@ -54,7 +54,7 @@ const GUIDE = [
   ]],
 ];
 
-const AdminOnly = () => (
+const AdminOnly = () => { const { colors: C } = useTheme(); const x = useX(); return (
   <Screen>
     <View style={{ alignItems: 'center', marginTop: 40 }}>
       <Ionicons name="lock-closed" size={36} color={C.mute} />
@@ -62,9 +62,11 @@ const AdminOnly = () => (
       <Text style={[x.mute, { textAlign: 'center', marginTop: 4 }]}>Halaman ini hanya bisa dibuka oleh akun admin.</Text>
     </View>
   </Screen>
-);
+); };
 
 export function Guide() {
+  const { colors: C } = useTheme();
+  const x = useX();
   const { user } = useApp();
   const items = GUIDE.filter(([, title]) => user.isAdmin || !title.includes('(admin)'));
   const [open, setOpen] = useState(0);
@@ -82,7 +84,7 @@ export function Guide() {
             {open === i && steps.map((st, j) => (
               <View key={j} style={{ flexDirection: 'row', marginTop: 8 }}>
                 <Text style={[x.b, { width: 18 }]}>{j + 1}.</Text>
-                <Text style={{ color: '#fff', flex: 1, lineHeight: 19 }}>{st}</Text>
+                <Text style={{ color: C.text, flex: 1, lineHeight: 19 }}>{st}</Text>
               </View>
             ))}
           </Card>
@@ -90,7 +92,7 @@ export function Guide() {
       ))}
       <Card style={{ borderColor: C.warn, borderWidth: 1 }}>
         <Text style={[x.b, { color: C.warn }]}>Nomor penting</Text>
-        <Text style={{ color: '#fff', marginTop: 4 }}>Basarnas 115 · Ambulans 118/119 · Polisi 110</Text>
+        <Text style={{ color: C.text, marginTop: 4 }}>Basarnas 115 · Ambulans 118/119 · Polisi 110</Text>
       </Card>
     </Screen>
   );
@@ -103,6 +105,8 @@ export function TestStatus() {
   return <TestStatusInner />;
 }
 function TestStatusInner() {
+  const { colors: C } = useTheme();
+  const x = useX();
   const [results, setResults] = useState(null);
   const [env, setEnv] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -129,7 +133,7 @@ function TestStatusInner() {
       <Text style={x.mute}>Menjalankan uji fungsional langsung di perangkat: validasi rute/lokasi, input, akses pengguna, dan kegagalan jaringan.</Text>
       {sum && (
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-          {[['Total', sum.total, '#fff'], ['Lulus', sum.passed, C.ok], ['Gagal', sum.failed, sum.failed ? C.red : C.mute]].map(([a, b, col]) => (
+          {[['Total', sum.total, C.text], ['Lulus', sum.passed, C.ok], ['Gagal', sum.failed, sum.failed ? C.red : C.mute]].map(([a, b, col]) => (
             <Card key={a} style={{ flex: 1, alignItems: 'center', marginTop: 0 }}><Text style={x.mute}>{a}</Text><Text style={[x.h2, { color: col }]}>{b}</Text></Card>
           ))}
         </View>
@@ -155,7 +159,7 @@ function TestStatusInner() {
               <View key={r.name} style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: 8 }}>
                 <Ionicons name={r.pass ? 'checkmark-circle' : 'close-circle'} size={18} color={r.pass ? C.ok : C.red} />
                 <View style={{ flex: 1, marginLeft: 8 }}>
-                  <Text style={{ color: '#fff' }}>{r.name}</Text>
+                  <Text style={{ color: C.text }}>{r.name}</Text>
                   {r.error && <Text style={{ color: C.red, fontSize: 12 }}>{r.error}</Text>}
                 </View>
               </View>
@@ -184,12 +188,14 @@ export function DataUpdate() {
   return <DataUpdateInner />;
 }
 function DataUpdateInner() {
+  const { colors: C } = useTheme();
+  const x = useX();
   const { mountains, apiUrl, setApiUrl, dataInfo, updateMountains, resetMountains, activeTrip } = useApp();
   const [url, setUrl] = useState(apiUrl);
   const [busy, setBusy] = useState(false);
 
   const saveUrl = () => {
-    try { setApiUrl(url); Alert.alert('Tersimpan', 'Alamat server diperbarui.'); } catch (e) { Alert.alert('Alamat tidak valid', e.message); }
+    setApiUrl(url).then(() => Alert.alert('Tersimpan', 'Alamat server diperbarui.')).catch((e) => Alert.alert('Alamat tidak valid', e.message));
   };
   const update = async () => {
     if (url.trim() !== apiUrl) {
@@ -220,15 +226,15 @@ function DataUpdateInner() {
       </Card>
 
       <Field label="Alamat server backend" value={url} onChangeText={setUrl} keyboardType="url" placeholder="http://192.168.1.5:8000" />
-      <Btn t="Simpan Alamat" color="#555" onPress={saveUrl} style={{ marginTop: 10 }} />
+      <Btn t="Simpan Alamat" color={C.neutral} onPress={saveUrl} style={{ marginTop: 10 }} />
       <Btn t={busy ? 'Memperbarui...' : 'Perbarui dari Server'} onPress={update} disabled={busy} style={{ marginTop: 10 }} />
-      {dataInfo.source === 'server' && <Btn t="Kembalikan Data Bawaan" color="#555" onPress={reset} disabled={busy} style={{ marginTop: 10 }} />}
+      {dataInfo.source === 'server' && <Btn t="Kembalikan Data Bawaan" color={C.neutral} onPress={reset} disabled={busy} style={{ marginTop: 10 }} />}
       {activeTrip && <Text style={[x.mute, { marginTop: 8 }]}>Ada pendakian aktif. Pembaruan data tidak mengubah pendakian tersebut.</Text>}
 
       <Text style={[x.h2, { marginTop: 20 }]}>Prosedur pembaruan data</Text>
       {PROSEDUR.map((p, i) => (
         <View key={i} style={{ flexDirection: 'row', marginTop: 8 }}>
-          <Text style={[x.b, { width: 20 }]}>{i + 1}.</Text><Text style={{ color: '#fff', flex: 1, lineHeight: 19 }}>{p}</Text>
+          <Text style={[x.b, { width: 20 }]}>{i + 1}.</Text><Text style={{ color: C.text, flex: 1, lineHeight: 19 }}>{p}</Text>
         </View>
       ))}
 

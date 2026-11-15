@@ -30,11 +30,16 @@ final class TripController
         return $o;
     }
 
-    /** GET /trips?status= (riwayat) */
+    /** GET /trips?status=&include=locations (riwayat; include=locations menyertakan jejak GPS) */
     public function index(Request $r): void
     {
-        $f = (new Validator($_GET))->enum('status', 'Status', Trip::STATUS)->validate();
-        Response::ok(array_map([Trip::class, 'format'], Trip::list($r->userId(), $f['status'] ?? null)));
+        $f = (new Validator($_GET))->enum('status', 'Status', Trip::STATUS)->enum('include', 'include', ['locations'])->validate();
+        $withLoc = ($f['include'] ?? null) === 'locations';
+        Response::ok(array_map(function ($t) use ($withLoc) {
+            $o = Trip::format($t);
+            if ($withLoc) $o['locations'] = array_map([Trip::class, 'formatLocation'], Trip::locations((int) $t['id']));
+            return $o;
+        }, Trip::list($r->userId(), $f['status'] ?? null)));
     }
 
     /** GET /trips/active : pendakian aktif, atau rencana terdekat; null jika tidak ada. */
