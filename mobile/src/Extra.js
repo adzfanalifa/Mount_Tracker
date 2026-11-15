@@ -3,29 +3,28 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Alert,
 import { Ionicons } from '@expo/vector-icons';
 import { C } from './theme';
 import { useApp } from './store';
-import { MOUNTAINS } from './data';
 import { dateUtil } from './models';
 import { diagnoseLocation, checkNetwork, requestPermission } from './location';
 
 // ------------------------------------------------------------ komponen kecil
-const Screen = ({ children }) => (
+export const Screen = ({ children }) => (
   <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
     {children}
   </ScrollView>
 );
-const Card = ({ children, style }) => <View style={[x.card, style]}>{children}</View>;
-const Btn = ({ t, onPress, color = C.accent, style, disabled }) => (
+export const Card = ({ children, style }) => <View style={[x.card, style]}>{children}</View>;
+export const Btn = ({ t, onPress, color = C.accent, style, disabled }) => (
   <TouchableOpacity disabled={disabled} onPress={onPress} style={[x.btn, { backgroundColor: color, opacity: disabled ? 0.5 : 1 }, style]}>
     <Text style={x.btnT}>{t}</Text>
   </TouchableOpacity>
 );
-const Field = ({ label, ...props }) => (
+export const Field = ({ label, ...props }) => (
   <View style={{ marginTop: 12 }}>
     <Text style={x.mute}>{label}</Text>
     <TextInput placeholderTextColor={C.mute} style={x.input} autoCapitalize="none" {...props} />
   </View>
 );
-const Chip = ({ t, on, onPress }) => (
+export const Chip = ({ t, on, onPress }) => (
   <TouchableOpacity onPress={onPress} style={[x.chip, on && { backgroundColor: C.accent }]}>
     <Text style={x.b}>{t}</Text>
   </TouchableOpacity>
@@ -41,10 +40,9 @@ const Stepper = ({ label, value, setValue, min = 1, max = 99 }) => (
   </View>
 );
 
-const pad = (n) => String(n).padStart(2, '0');
-const fmtDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const fmtDateTime = (d) => `${fmtDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-const fmtDur = (min) => `${Math.floor(min / 60)} j ${pad(min % 60)} m`;
+export const pad = (n) => String(n).padStart(2, '0');
+export const fmtDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+export const fmtDateTime = (d) => `${fmtDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 function parseDate(s) {
   const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(s).trim());
   if (!m) return null;
@@ -55,10 +53,11 @@ const call = (phone) => Linking.openURL(`tel:${phone}`).catch(() => Alert.alert(
 
 // ------------------------------------------------------------- Rencana Pendakian
 export function PlanHike({ navigation, route }) {
-  const { addTrip, user } = useApp();
-  const [mId, setMId] = useState((route.params && route.params.mountainId) || MOUNTAINS[0].id);
-  const mountain = MOUNTAINS.find((m) => m.id === mId);
+  const { addTrip, user, mountains } = useApp();
+  const [mId, setMId] = useState((route.params && route.params.mountainId) || mountains[0].id);
+  const mountain = mountains.find((m) => m.id === mId) || mountains[0];
   const [trail, setTrail] = useState(mountain.trails[0]);
+  const trailName = mountain.trails.includes(trail) ? trail : mountain.trails[0];
   const [date, setDate] = useState(fmtDate(dateUtil.addDays(new Date(), 1)));
   const [people, setPeople] = useState(2);
   const [days, setDays] = useState(2);
@@ -83,7 +82,7 @@ export function PlanHike({ navigation, route }) {
     try {
       const end = dateUtil.addDays(start, days - 1);
       end.setHours(+t[1], +t[2], 0, 0);
-      addTrip({ mountain, trailName: trail, groupSize: people, plannedDays: days, startDate: start, expectedReturnAt: end, notes });
+      addTrip({ mountain, trailName, groupSize: people, plannedDays: days, startDate: start, expectedReturnAt: end, notes });
       Alert.alert('Rencana tersimpan', 'Status: Direncanakan. Tekan Mulai Pendakian di Home saat berangkat.', [{ text: 'OK', onPress: () => navigation.navigate('Main') }]);
     } catch (e) {
       Alert.alert('Data belum valid', e.message);
@@ -94,9 +93,9 @@ export function PlanHike({ navigation, route }) {
   return (
     <Screen>
       <Text style={x.h2}>Gunung</Text>
-      <View style={x.wrap}>{MOUNTAINS.map((m) => <Chip key={m.id} t={m.name} on={m.id === mId} onPress={() => pick(m)} />)}</View>
+      <View style={x.wrap}>{mountains.map((m) => <Chip key={m.id} t={m.name} on={m.id === mountain.id} onPress={() => pick(m)} />)}</View>
       <Text style={[x.h2, { marginTop: 14 }]}>Jalur</Text>
-      <View style={x.wrap}>{mountain.trails.map((tr) => <Chip key={tr} t={tr} on={tr === trail} onPress={() => setTrail(tr)} />)}</View>
+      <View style={x.wrap}>{mountain.trails.map((tr) => <Chip key={tr} t={tr} on={tr === trailName} onPress={() => setTrail(tr)} />)}</View>
 
       <Field label="Tanggal berangkat (TAHUN-BULAN-TANGGAL)" value={date} onChangeText={setDate} keyboardType="numbers-and-punctuation" />
       <Stepper label="Jumlah orang" value={people} setValue={setPeople} />
@@ -227,27 +226,6 @@ export function Emergency({ navigation }) {
   );
 }
 
-// ------------------------------------------------------------ Riwayat Perjalanan
-const STATUS_LABEL = { planned: 'Direncanakan', active: 'Aktif', finished: 'Selesai', cancelled: 'Dibatalkan' };
-
-export function History() {
-  const { trips } = useApp();
-  const done = trips.filter((t) => t.status === 'finished' || t.status === 'cancelled');
-  return (
-    <Screen>
-      {done.length === 0 && <Text style={x.mute}>Belum ada pendakian yang selesai.</Text>}
-      {done.map((t) => (
-        <Card key={t.id}>
-          <View style={x.line}><Text style={x.h2}>{t.trailName}</Text><Text style={{ color: t.status === 'finished' ? C.ok : C.mute }}>{STATUS_LABEL[t.status]}</Text></View>
-          <Text style={x.mute}>{fmtDate(t.startDate)} · {t.groupSize} orang · {t.plannedDays} hari</Text>
-          <Text style={[x.b, { marginTop: 6 }]}>Durasi: {fmtDur(t.durationMinutes())}</Text>
-          <Text style={x.mute}>{t.locations.length} titik lokasi tercatat ({t.unavailableCount()} tidak tersedia)</Text>
-        </Card>
-      ))}
-    </Screen>
-  );
-}
-
 // ---------------------------------------------------------------- Status Sistem
 const CATS = ['Login', 'Lokasi', 'Peta', 'Data gunung', 'Lainnya'];
 
@@ -313,7 +291,7 @@ export function SystemStatus() {
   );
 }
 
-const x = StyleSheet.create({
+export const x = StyleSheet.create({
   card: { backgroundColor: C.card, borderRadius: 10, padding: 12, marginTop: 12 },
   btn: { borderRadius: 10, padding: 14, alignItems: 'center' },
   btnT: { color: '#fff', fontWeight: '700' },

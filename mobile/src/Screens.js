@@ -1,13 +1,22 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { C } from './theme';
 import { useApp } from './store';
-import { MOUNTAINS, DIFFICULTY } from './data';
+import { DIFFICULTY } from './data';
 
+const pad = (n) => String(n).padStart(2, '0');
+const hm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const fmtLeft = (min) => `${min < 0 ? '-' : ''}${Math.floor(Math.abs(min) / 60)}j ${Math.abs(min) % 60}m`;
+
+const ProfileBtn = () => {
+  const nav = useNavigation();
+  return <TouchableOpacity onPress={() => nav.navigate('Profile')} hitSlop={10}><Ionicons name="person-circle-outline" size={26} color="#fff" /></TouchableOpacity>;
+};
 const Page = ({ title, sub, children }) => (
   <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingTop: 56 }}>
-    <View style={s.top}><Text style={s.brand}>Mount Tracker</Text><Ionicons name="person-circle-outline" size={24} color="#fff" /></View>
+    <View style={s.top}><Text style={s.brand}>Mount Tracker</Text><ProfileBtn /></View>
     <Text style={s.h1}>{title}</Text>{sub ? <Text style={s.mute}>{sub}</Text> : null}
     {children}
   </ScrollView>
@@ -17,7 +26,7 @@ const Hero = ({ h = 130 }) => <View style={{ height: h, borderRadius: 10, backgr
   <View style={{ position: 'absolute', bottom: 0, width: '100%', height: h * 0.45, backgroundColor: '#2D7A55' }} /></View>;
 
 export function Home({ navigation }) {
-  const { activeTrip, plannedTrip, startTrip, finishTrip } = useApp();
+  const { activeTrip, plannedTrip, startTrip, finishTrip, cancelTrip, user } = useApp();
   const trip = activeTrip || plannedTrip;
   const overdue = activeTrip ? activeTrip.isOverdue() : false;
   const last = activeTrip ? activeTrip.lastKnownLocation() : null;
@@ -29,6 +38,10 @@ export function Home({ navigation }) {
       if (!ok) Alert.alert('Lokasi tidak tersedia', 'Pendakian tetap dimulai, tetapi posisimu belum bisa dicatat. Cek izin dan GPS di menu Status Sistem.');
     } catch (e) { Alert.alert('Tidak bisa memulai', e.message); }
   };
+  const onCancel = () => Alert.alert('Batalkan rencana?', trip.trailName, [
+    { text: 'Tidak', style: 'cancel' },
+    { text: 'Batalkan', style: 'destructive', onPress: () => cancelTrip(trip) },
+  ]);
   const onFinish = () => Alert.alert('Akhiri pendakian?', trip.trailName, [
     { text: 'Batal', style: 'cancel' },
     { text: 'Akhiri', onPress: () => finishTrip(trip) },
@@ -40,6 +53,10 @@ export function Home({ navigation }) {
     ['Lokasi', last ? 'Tercatat' : (activeTrip ? 'Tidak tersedia' : '-')],
   ] : [['Status', '-'], ['Durasi', '-'], ['Lokasi', '-']];
   const shortcuts = [['call', 'Kontak', 'Contacts'], ['time', 'Riwayat', 'History'], ['pulse', 'Status', 'SystemStatus']];
+  const shortcuts2 = [['book', 'Panduan', 'Guide'], ['add-circle', 'Rencana', 'PlanHike'],
+    ...(user.isAdmin ? [['flask', 'Pengujian', 'TestStatus'], ['cloud-download', 'Data', 'DataUpdate']] : [])];
+  const leftMin = trip ? Math.round((trip.expectedReturnAt - new Date()) / 60000) : 0;
+  const contact = (trip && trip.contact) || user.primaryContact();
 
   return (
     <Page title={trip ? trip.mountain.name : 'Belum ada pendakian'} sub={trip ? trip.trailName : 'Buat rencana pendakian untuk mulai'}>
@@ -60,6 +77,24 @@ export function Home({ navigation }) {
           </TouchableOpacity>
         ))}
       </View>
+      <View style={[s.row, { marginTop: 8 }]}>
+        {shortcuts2.map(([ic, t, to]) => (
+          <TouchableOpacity key={t} style={s.shortcut} onPress={() => navigation.navigate(to)}>
+            <Ionicons name={ic} size={18} color="#fff" /><Text style={[s.b, { fontSize: 12 }]}>{t}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      {trip && (
+        <Card><Text style={s.b}>Dashboard Pendakian</Text>
+          <View style={s.dash}><Text style={s.mute}>Tanggal berangkat</Text><Text style={s.b}>{trip.startDate.toLocaleDateString('id-ID')}</Text></View>
+          <View style={s.dash}><Text style={s.mute}>Estimasi turun</Text><Text style={s.b}>{trip.expectedReturnAt.toLocaleDateString('id-ID')} {hm(trip.expectedReturnAt)}</Text></View>
+          {activeTrip && <View style={s.dash}><Text style={s.mute}>Sisa waktu</Text><Text style={[s.b, { color: leftMin < 0 ? C.red : leftMin < 120 ? C.warn : C.ok }]}>{leftMin < 0 ? `Lewat ${fmtLeft(-leftMin)}` : fmtLeft(leftMin)}</Text></View>}
+          <View style={s.dash}><Text style={s.mute}>Rombongan</Text><Text style={s.b}>{trip.groupSize} orang · {trip.plannedDays} hari</Text></View>
+          {activeTrip && <View style={s.dash}><Text style={s.mute}>Lokasi terakhir</Text><Text style={s.b}>{last ? `${last.toString()} (${hm(last.recordedAt)})` : 'Tidak tersedia'}</Text></View>}
+          {activeTrip && <View style={s.dash}><Text style={s.mute}>Titik tercatat</Text><Text style={s.b}>{activeTrip.locations.length} ({activeTrip.unavailableCount()} gagal)</Text></View>}
+          <View style={s.dash}><Text style={s.mute}>Kontak darurat</Text><Text style={s.b}>{contact ? contact.name : 'Belum ada'}</Text></View>
+        </Card>
+      )}
       <Card><Text style={s.b}>Kondisi Pendakian</Text>
         <View style={s.grid}>{[['Detak Jantung', '149 bpm'], ['Cuaca', '18°C'], ['Suhu', 'Aman'], ['Kelembapan', '72%']].map(([a, b]) =>
           <View key={a} style={s.cell}><Text style={s.mute}>{a}</Text><Text style={{ color: C.accent }}>{b}</Text></View>)}</View>
@@ -68,17 +103,43 @@ export function Home({ navigation }) {
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>{['Now', '1 jam', '2 jam', '3 jam', '4 jam', '5 jam'].map((t, i) =>
           <View key={t} style={[s.hour, i === 0 && { backgroundColor: C.accent }]}><Text style={s.mute}>{t}</Text><Ionicons name="partly-sunny" size={18} color="#fff" /><Text style={{ color: '#fff' }}>{18 - i}°</Text></View>)}</ScrollView></Card>
       {!trip && <TouchableOpacity style={[s.cta, { backgroundColor: C.accent }]} onPress={() => navigation.navigate('PlanHike')}><Text style={s.b}>Buat Rencana Pendakian</Text></TouchableOpacity>}
-      {trip && trip.status === 'planned' && <TouchableOpacity style={[s.cta, { backgroundColor: C.ok }]} onPress={onStart}><Text style={s.b}>Mulai Pendakian</Text></TouchableOpacity>}
+      {trip && trip.status === 'planned' && <TouchableOpacity style={[s.cta, { backgroundColor: C.ok, marginBottom: 0 }]} onPress={onStart}><Text style={s.b}>Mulai Pendakian</Text></TouchableOpacity>}
+      {trip && trip.status === 'planned' && <TouchableOpacity style={[s.cta, { backgroundColor: '#555', marginTop: 10 }]} onPress={onCancel}><Text style={s.b}>Batalkan Rencana</Text></TouchableOpacity>}
       {trip && trip.status === 'active' && <TouchableOpacity style={[s.cta, { backgroundColor: '#555' }]} onPress={onFinish}><Text style={s.b}>Akhiri Pendakian</Text></TouchableOpacity>}
     </Page>
   );
 }
 
 export function Maps() {
+  const { activeTrip, trips } = useApp();
+  const trip = activeTrip || trips.find((t) => t.status === 'finished') || null;
+  if (trip && trip.locations.length > 0) {
+    const pts = [...trip.locations].reverse();
+    const ok = trip.locations.filter((l) => l.isAvailable());
+    const alts = ok.map((l) => l.altitudeM).filter((a) => a != null);
+    return (
+      <Page title="JEJAK PENDAKIAN" sub={`${trip.trailName} · ${activeTrip ? 'Aktif' : 'Terakhir selesai'}`}>
+        <View style={s.map}><Ionicons name="navigate" size={28} color={C.warn} />
+          <Text style={s.b}>{trip.lastKnownLocation() ? trip.lastKnownLocation().toString() : 'Posisi belum diketahui'}</Text>
+          <Text style={s.mute}>Area peta (react-native-maps)</Text></View>
+        <View style={[s.row, { marginTop: 12 }]}>
+          {[['Titik', trip.locations.length], ['Gagal', trip.unavailableCount()], ['Tertinggi', alts.length ? `${Math.max(...alts)} m` : '-']].map(([a, b]) =>
+            <Card key={a} style={s.stat}><Text style={s.mute}>{a}</Text><Text style={s.b}>{b}</Text></Card>)}
+        </View>
+        {pts.map((l, i) => (
+          <Card key={i} style={s.pos}>
+            <Ionicons name={!l.isAvailable() ? 'alert-circle' : i === 0 && activeTrip ? 'location' : 'checkmark-circle'} size={22} color={!l.isAvailable() ? C.warn : i === 0 && activeTrip ? C.red : C.ok} />
+            <View style={{ flex: 1, marginLeft: 10 }}><Text style={s.b}>{l.toString()}</Text>
+              <Text style={s.mute}>{l.altitudeM != null ? `${l.altitudeM} mdpl` : 'Ketinggian -'}{l.accuracyM ? ` · ±${Math.round(l.accuracyM)} m` : ''}</Text></View>
+            <Text style={s.b}>{hm(l.recordedAt)}</Text></Card>))}
+      </Page>
+    );
+  }
   const pos = [['Pos 1 - Sembalun', '1.156 mdpl · 1.2 km', '08:30', 'ok'], ['Pos 2', '1.800 mdpl · 3.4 km', '09:52', 'ok'],
     ['Pos 3', '2.100 mdpl · 5.1 km', '11:40', 'ok'], ['Pos 4', '2.400 mdpl · 6.8 km', '13:21', 'now'], ['Plawangan', '2.639 mdpl', 'Est. 15:30', 'next'], ['Puncak', '3.726 mdpl', 'Est. 03:00', 'next']];
   return (
-    <Page title="PETA JALUR" sub="Rinjani via Sembalun">
+    <Page title="PETA JALUR" sub="Rinjani via Sembalun (contoh)">
+      <Text style={[s.mute, { marginTop: 6 }]}>Jejak lokasimu akan tampil di sini setelah pendakian dimulai.</Text>
       <View style={s.map}><Ionicons name="navigate" size={28} color={C.warn} /><Text style={s.mute}>Area peta (react-native-maps)</Text></View>
       {pos.map(([a, b, t, st]) => (
         <Card key={a} style={s.pos}>
@@ -127,12 +188,13 @@ export function Starterpack() {
 }
 
 export function Mount({ navigation }) {
+  const { mountains } = useApp();
   const [q, setQ] = useState('');
   return (
     <Page title="Direktori Gunung" sub="Pendakian Gunung">
       <TextInput value={q} onChangeText={setQ} placeholder="Search Here" placeholderTextColor={C.mute} style={s.search} />
-      {MOUNTAINS.filter(m => m.name.toLowerCase().includes(q.toLowerCase())).map((m) => (
-        <View key={m.id} style={s.mCard}><View style={{ flex: 1 }} />
+      {mountains.filter(m => m.name.toLowerCase().includes(q.toLowerCase())).map((m) => (
+        <View key={m.id} style={s.mCard}><View style={{ flex: 1 }}><Text style={{ color: '#E5F2F5', fontSize: 11 }}>{m.elevationMdpl.toLocaleString('id-ID')} mdpl · {m.trails.length} jalur</Text></View>
           <View style={s.mRow}><Text style={s.mName}>{m.name}</Text>
             <View style={[s.badge, { backgroundColor: DIFFICULTY[m.difficulty].color }]}><Text style={{ fontSize: 10, color: '#111' }}>{DIFFICULTY[m.difficulty].label}</Text></View></View>
           <TouchableOpacity style={s.addBtn} onPress={() => navigation.navigate('PlanHike', { mountainId: m.id })}>
@@ -154,6 +216,7 @@ const s = StyleSheet.create({
   hour: { alignItems: 'center', padding: 8, marginRight: 6, borderRadius: 8, gap: 4 },
   cta: { backgroundColor: C.red, borderRadius: 10, padding: 14, alignItems: 'center', marginTop: 16, marginBottom: 20 },
   map: { height: 170, borderRadius: 10, backgroundColor: '#2D5A3F', alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  dash: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#4A6A72', gap: 10 },
   pos: { flexDirection: 'row', alignItems: 'center' },
   bars: { flexDirection: 'row', alignItems: 'flex-end', height: 90, marginTop: 8 },
   alert: { borderRadius: 8, padding: 10, marginTop: 10 },

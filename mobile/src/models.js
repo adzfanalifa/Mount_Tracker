@@ -4,6 +4,17 @@ const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n, d.getHours(), d.getMinutes());
 export const dateUtil = { startOfDay, addDays };
 
+// Jarak dua titik (km) dengan rumus haversine.
+export function haversineKm(a, b) {
+  const R = 6371;
+  const rad = (d) => (d * Math.PI) / 180;
+  const dLat = rad(b.latitude - a.latitude);
+  const dLng = rad(b.longitude - a.longitude);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+const MOVING_KMH = 0.5; // di bawah kecepatan ini dianggap berhenti
+
 export const TRIP_STATUS = { PLANNED: 'planned', ACTIVE: 'active', FINISHED: 'finished', CANCELLED: 'cancelled' };
 
 // ---------------------------------------------------------------- Location
@@ -48,12 +59,16 @@ export class EmergencyContact {
 
 // --------------------------------------------------------------------- User
 export class User {
-  constructor({ id, username, email = '' }) {
+  constructor({ id, username, email = '', displayName = '', role = 'user' }) {
     this.id = id;
+    this.role = role; // user | admin
     this.username = username;
     this.email = email;
+    this.displayName = displayName;
     this._contacts = [];
   }
+  get isAdmin() { return this.role === 'admin'; }
+  get name() { return this.displayName || this.username || 'Pendaki'; }
   get emergencyContacts() { return [...this._contacts]; }
   addContact(contact) {
     const err = contact.validate();
@@ -147,6 +162,35 @@ export class HikingTrip {
   durationMinutes(now = new Date()) {
     if (!this.startedAt) return 0;
     return Math.max(0, Math.floor(((this.endedAt || now) - this.startedAt) / 60000));
+  }
+  trackPoints() { return this._locations.filter((l) => l.isAvailable()); }
+  distanceKm() {
+    const p = this.trackPoints();
+    let d = 0;
+    for (let i = 1; i < p.length; i++) d += haversineKm(p[i - 1], p[i]);
+    return d;
+  }
+  // Menit bergerak: jumlah selang antar titik yang kecepatannya di atas ambang.
+  movingMinutes() {
+    const p = this.trackPoints();
+    let m = 0;
+    for (let i = 1; i < p.length; i++) {
+      const min = (p[i].recordedAt - p[i - 1].recordedAt) / 60000;
+      if (min > 0 && haversineKm(p[i - 1], p[i]) / (min / 60) >= MOVING_KMH) m += min;
+    }
+    return Math.round(m);
+  }
+  stoppedMinutes(now = new Date()) { return Math.max(0, this.durationMinutes(now) - this.movingMinutes()); }
+  paceMinPerKm() { const d = this.distanceKm(); return d > 0 ? this.movingMinutes() / d : 0; }
+  elevationGainM() {
+    const a = this.trackPoints().map((l) => l.altitudeM).filter((x) => x != null);
+    let g = 0;
+    for (let i = 1; i < a.length; i++) if (a[i] > a[i - 1]) g += a[i] - a[i - 1];
+    return g;
+  }
+  maxAltitudeM() {
+    const a = this.trackPoints().map((l) => l.altitudeM).filter((x) => x != null);
+    return a.length ? Math.max(...a) : null;
   }
 }
 

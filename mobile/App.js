@@ -7,7 +7,9 @@ import { C } from './src/theme';
 import { Login, Register, Forgot, Reset } from './src/Auth';
 import { Home, Maps, Health, Starterpack, Mount } from './src/Screens';
 import { AppProvider } from './src/store';
-import { PlanHike, Contacts, Emergency, History, SystemStatus } from './src/Extra';
+import { PlanHike, Contacts, Emergency, SystemStatus } from './src/Extra';
+import { History, HistoryDetail, Profile } from './src/HistoryProfile';
+import { Guide, TestStatus, DataUpdate } from './src/More';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -45,8 +47,13 @@ export default function App() {
           <Stack.Screen name="PlanHike" component={PlanHike} options={hdr('Rencana Pendakian')} />
           <Stack.Screen name="Contacts" component={Contacts} options={hdr('Kontak Darurat')} />
           <Stack.Screen name="Emergency" component={Emergency} options={hdr('Darurat')} />
-          <Stack.Screen name="History" component={History} options={hdr('Riwayat Perjalanan')} />
+          <Stack.Screen name="History" component={History} />
+          <Stack.Screen name="HistoryDetail" component={HistoryDetail} />
+          <Stack.Screen name="Profile" component={Profile} />
           <Stack.Screen name="SystemStatus" component={SystemStatus} options={hdr('Status Sistem')} />
+          <Stack.Screen name="Guide" component={Guide} options={hdr('Panduan Pengguna')} />
+          <Stack.Screen name="TestStatus" component={TestStatus} options={hdr('Status Pengujian')} />
+          <Stack.Screen name="DataUpdate" component={DataUpdate} options={hdr('Pembaruan Data')} />
         </Stack.Navigator>
       </NavigationContainer>
     </AppProvider>
