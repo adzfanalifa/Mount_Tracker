@@ -1,0 +1,12 @@
+# Jika folder ini diakses langsung lewat Apache (http://localhost/mount-tracker-backend/),
+# semua request diteruskan ke folder public/. File .env, src/, config/ tidak bisa diakses.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+<FilesMatch "^\.env|composer\.(json|lock)$">
+    Require all denied
+</FilesMatch>
+Options -Indexes

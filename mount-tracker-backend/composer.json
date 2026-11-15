@@ -1,0 +1,17 @@
+{
+    "name": "mount-tracker/backend",
+    "description": "REST API Mount Tracker (PHP + MySQL)",
+    "type": "project",
+    "require": {
+        "php": ">=8.1",
+        "ext-pdo": "*",
+        "ext-json": "*",
+        "phpmailer/phpmailer": "^6.9"
+    },
+    "autoload": {
+        "psr-4": { "App\\": "src/" }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
