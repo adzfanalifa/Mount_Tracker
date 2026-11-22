@@ -13,3 +13,4 @@ dist/
 mobile/node_modules/
 mobile/.expo/
 mobile/.expo-export-check/
+*.zip
