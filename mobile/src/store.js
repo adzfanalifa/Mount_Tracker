@@ -139,6 +139,16 @@ export function AppProvider({ children }) {
     await Promise.allSettled([loadContacts(u), loadCurrentTrip(), loadTrips(), loadHealth(), loadIssues()]);
   }
 
+  // Lepas gunung terpilih jika sama dengan gunung pendakian yang baru selesai/dibatalkan.
+  function clearSelectionFor(trip) {
+    const mid = trip && trip.mountain ? String(trip.mountain.id) : null;
+    setSelectedMountainId((cur) => {
+      if (cur == null || cur !== mid) return cur;
+      storage.remove(K.selected);
+      return null;
+    });
+  }
+
   async function startSession(data) {
     api.setToken(data.token);
     await storage.set(K.token, data.token);
@@ -317,8 +327,9 @@ export function AppProvider({ children }) {
       await loadCurrentTrip();
       return loc.isAvailable();
     },
-    async finishTrip(trip) { await api.finishTrip(trip.id); await Promise.all([loadCurrentTrip(), loadTrips()]); },
-    async cancelTrip(trip) { await api.cancelTrip(trip.id); await Promise.all([loadCurrentTrip(), loadTrips()]); },
+    // Setelah pendakian selesai/dibatalkan, pilihan gunung itu dilepas supaya Maps kembali ke "belum memilih".
+    async finishTrip(trip) { await api.finishTrip(trip.id); clearSelectionFor(trip); await Promise.all([loadCurrentTrip(), loadTrips()]); },
+    async cancelTrip(trip) { await api.cancelTrip(trip.id); clearSelectionFor(trip); await Promise.all([loadCurrentTrip(), loadTrips()]); },
     async checkin(checkpointId) {
       const t = currentTrip;
       if (!t || t.status !== 'active') throw new Error('Mulai pendakian dulu sebelum check-in');
