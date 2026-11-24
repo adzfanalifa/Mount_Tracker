@@ -1,4 +1,4 @@
-/vendor/
+# vendor/ (PHPMailer) sengaja ikut di repo agar tidak perlu composer install
 .env
 /storage/cache/*
 !/storage/cache/.gitkeep
