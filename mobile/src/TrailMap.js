@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useTheme } from './theme';
+import { fitPointsFor } from './mapFit';
 
 const INDONESIA = { latitude: -2.5, longitude: 118, latitudeDelta: 22, longitudeDelta: 22 };
 
@@ -13,7 +14,8 @@ export default function TrailMap({ style, checkpoints = [], basecamp = null, tra
 
   const route = useMemo(() => [basecamp, ...checkpoints].filter(Boolean).map((p) => ({ latitude: p.latitude, longitude: p.longitude })), [basecamp, checkpoints]);
   const trackCoords = useMemo(() => track.filter((l) => l.isAvailable()).map((l) => ({ latitude: l.latitude, longitude: l.longitude })), [track]);
-  const fitPoints = route.length ? [...route, ...trackCoords] : summit ? [summit] : userLocation ? [userLocation] : [];
+  // Zoom hanya ke area gunung; titik GPS yang jauh dari jalur tidak ikut (lihat mapFit.js).
+  const fitPoints = fitPointsFor({ route, summit, track: trackCoords, userLocation });
   const key = fitPoints.map((p) => `${p.latitude.toFixed(4)},${p.longitude.toFixed(4)}`).join('|');
 
   const fit = () => {

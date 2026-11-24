@@ -285,8 +285,12 @@ export function Maps({ navigation }) {
       {isActive && cps.length > 0 && <Text style={[s.mute, { marginTop: 10 }]}>Ketuk pos saat kamu sampai untuk check-in.</Text>}
       {!trip && <Text style={[s.mute, { marginTop: 10 }]}>Buat rencana lewat tombol "Tambahkan Pendakian" di tab Mount untuk mulai mencatat waktu di setiap pos.</Text>}
       {pos.loading && !cps.length && <Loading text="Memuat pos..." />}
-      <ErrorBox message={pos.error} onRetry={pos.reload} />
-      {!pos.loading && !pos.error && cps.length === 0 && <Empty text="Data pos untuk jalur ini belum tersedia." icon="flag-outline" />}
+      {/* Dua keadaan berbeda: gagal memuat (error jaringan/server) vs data pos memang belum ada di server. */}
+      <ErrorBox message={pos.error ? `Gagal memuat data pos: ${pos.error}` : null} onRetry={pos.reload} />
+      {!pos.loading && !pos.error && cps.length === 0 && (
+        <Empty icon="flag-outline"
+          text={`Data pos untuk jalur ${trail ? trail.name : 'ini'} belum tersedia di server.${basecamp || summit ? ' Peta menampilkan basecamp dan puncak saja.' : ''}`} />
+      )}
       {cps.some((c) => c.isSample) && <Text style={[s.mute, { marginTop: 8 }]}>Koordinat pos adalah perkiraan (data contoh).</Text>}
       {cps.map((c, i) => {
         const st = c.status;
