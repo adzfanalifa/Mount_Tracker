@@ -15,6 +15,27 @@ Aplikasi untuk mencatat pendakian gunung:
 | `mount-tracker-backend/` | REST API PHP 8 + MySQL, dijalankan di Laragon (Windows) |
 | `mobile/` | Aplikasi HP **Expo (React Native)**, SDK 58 |
 | `TESTING.md` | Tes otomatis dan langkah tes manual di HP |
+| `setup.bat`, `start-backend.bat`, `start-mobile.bat` | Skrip Windows untuk setup dan menjalankan aplikasi |
+
+## Cara cepat (laptop baru, Windows + Laragon)
+
+1. Install **Laragon** (https://laragon.org) dan **Node.js 20+**.
+2. Buka Laragon, lalu klik **Start All**.
+3. Klik kanan **`setup.bat`** → **Run as administrator**. Ini cukup sekali. Skrip ini akan:
+   - membuat `.env` backend dengan JWT secret acak,
+   - mengimpor database (`schema.sql` + `seed.sql`, termasuk akun demo),
+   - mengisi IP laptop di `mobile/.env`,
+   - menjalankan `npm install`,
+   - membuka port 8000 dan 8081 di firewall.
+
+   Jika database `mount_tracker` sudah ada, skrip akan bertanya dulu dan membuat backup sebelum menimpanya.
+4. Klik dua kali **`start-backend.bat`**. Jangan tutup jendelanya.
+5. Klik dua kali **`start-mobile.bat`**, lalu scan QR dengan **Expo Go** di HP. HP harus tersambung ke WiFi yang sama dengan laptop.
+6. Login dengan `demo` / `demo1234`.
+
+`start-mobile.bat` otomatis memperbarui IP laptop setiap kali dijalankan, jadi aman walaupun kamu ganti WiFi atau hotspot.
+
+Untuk email Gmail, login Google, dan langkah manual lainnya, lihat bagian di bawah.
 
 ---
 
